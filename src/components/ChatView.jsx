@@ -47,7 +47,7 @@ function Message({ message }) {
       {message.content ? <div className="markdown-body"><ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown></div> : <div className="typing-indicator" aria-label="Astra is thinking"><i /><i /><i /></div>}
       {message.content && <div className="message-actions">
         <button onClick={copy} title="Copy response" aria-label="Copy response">{copied ? <Check size={14} /> : <Copy size={14} />}{copied && <span>Copied</span>}</button>
-        <button onClick={speak} title="Read aloud" aria-label="Read response aloud"><Volume2 size={15} /></button>
+        <button onClick={speak} disabled={!("speechSynthesis" in window)} title={"speechSynthesis" in window ? "Read aloud" : "Text-to-speech isn't available in this browser"} aria-label="Read response aloud"><Volume2 size={15} /></button>
       </div>}
     </div>
   </article>;

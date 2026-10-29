@@ -123,7 +123,7 @@ kbd { display: inline-flex; align-items: center; justify-content: center; color:
 .account-settings { color: var(--faint); }
 
 .main-panel { min-width: 0; position: relative; flex: 1; height: 100%; display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
-.ambient-glow { pointer-events: none; position: absolute; width: 680px; height: 480px; left: 50%; top: 18%; transform: translateX(-50%); background: radial-gradient(ellipse,rgba(100,77,157,.09) 0%,rgba(69,104,124,.035) 33%,transparent 68%); filter: blur(10px); }
+.ambient-glow { z-index: 0; pointer-events: none; position: absolute; width: 680px; height: 480px; left: 50%; top: 18%; transform: translateX(-50%); background: radial-gradient(ellipse,rgba(100,77,157,.09) 0%,rgba(69,104,124,.035) 33%,transparent 68%); filter: blur(10px); }
 .topbar { z-index: 5; height: 64px; flex: 0 0 auto; position: relative; display: flex; align-items: center; justify-content: space-between; padding: 0 27px; border-bottom: 1px solid var(--line); background: color-mix(in srgb,var(--bg) 91%,transparent); }
 .topbar-left, .topbar-right { height: 100%; display: flex; align-items: center; gap: 13px; }
 .mobile-menu-button { display: none; }
@@ -146,7 +146,9 @@ kbd { display: inline-flex; align-items: center; justify-content: center; color:
 .model-menu-foot { margin: 4px 4px 0; padding: 9px 6px 3px; border-top: 1px solid var(--line); color: var(--faint); font-size: 9.5px; }
 .connection-status { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 10.5px; }
 .connection-status i, .connection-pill i { width: 6px; height: 6px; display: block; border-radius: 50%; background: #dda56a; box-shadow: 0 0 9px rgba(221,165,106,.48); }
-.connection-status.connected i, .connection-pill.on i { background: var(--green); box-shadow: 0 0 10px rgba(117,212,165,.48); }
+.connection-status.connected i, .connection-pill.on i, .connection-pill.connected i { background: var(--green); box-shadow: 0 0 10px rgba(117,212,165,.48); }
+.connection-status.error i, .connection-pill.error i { background: var(--danger); box-shadow: 0 0 9px rgba(255,133,139,.48); }
+.connection-status.configured i, .connection-pill.configured i { background: #dda56a; box-shadow: 0 0 9px rgba(221,165,106,.48); }
 .topbar-separator { width: 1px; height: 19px; background: var(--line-strong); }
 .settings-trigger { width: 31px; height: 31px; }
 .top-avatar { width: 26px; height: 26px; border-radius: 8px; font-size: 10px; }
@@ -221,6 +223,7 @@ kbd { display: inline-flex; align-items: center; justify-content: center; color:
 .message-assistant:hover .message-actions { opacity: 1; }
 .message-actions button { min-width: 27px; height: 25px; padding: 0 5px; display: inline-flex; align-items: center; justify-content: center; gap: 4px; border: 0; border-radius: 5px; color: var(--muted); background: transparent; font-size: 9px; cursor: pointer; }
 .message-actions button:hover { color: var(--text); background: var(--surface-hover); }
+.message-actions button:disabled { color: var(--faint); opacity: .45; cursor: not-allowed; }
 .typing-indicator { height: 27px; display: flex; align-items: center; gap: 5px; padding-left: 1px; }
 .typing-indicator i { width: 5px; height: 5px; border-radius: 50%; background: var(--purple); opacity: .45; animation: dot-pulse 1.15s ease-in-out infinite; }
 .typing-indicator i:nth-child(2) { animation-delay: .16s; }.typing-indicator i:nth-child(3) { animation-delay: .32s; }
@@ -242,6 +245,7 @@ kbd { display: inline-flex; align-items: center; justify-content: center; color:
 .paperclip-overlay { position: absolute; right: 5px; bottom: 5px; stroke-width: 2.7; background: var(--surface); }
 .composer-divider { width: 1px; height: 16px; margin: 0 2px; background: var(--line-strong); }
 .web-tool svg { color: var(--purple); }
+.web-tool.tool-enabled { color: var(--purple); border-color: rgba(183,161,250,.22); background: var(--purple-soft); }
 .mic-tool { width: 31px; padding: 0; }
 .mic-tool.recording { color: var(--green); background: rgba(117,212,165,.1); animation: mic-pulse 1.2s ease-in-out infinite; }
 @keyframes mic-pulse { 50% { box-shadow: 0 0 0 4px rgba(117,212,165,.1); } }

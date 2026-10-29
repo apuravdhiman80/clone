@@ -5,6 +5,7 @@ export default function Composer({ onSend, busy, onStop, autoFocus = false }) {
   const [value, setValue] = useState("");
   const [files, setFiles] = useState([]);
   const [recording, setRecording] = useState(false);
+  const [thinking, setThinking] = useState(false);
   const [voiceNote, setVoiceNote] = useState("");
   const inputRef = useRef(null);
   const fileRef = useRef(null);
@@ -13,6 +14,7 @@ export default function Composer({ onSend, busy, onStop, autoFocus = false }) {
 
   async function addFiles(fileList) {
     const accepted = [];
+    let totalBytes = files.reduce((sum, file) => sum + file.size, 0);
     for (const file of Array.from(fileList || [])) {
       if (!/\.(txt|md|markdown|json|csv|log)$/i.test(file.name)) {
         setVoiceNote(`${file.name} isn't supported yet. Try a text, Markdown, JSON, CSV, or log file.`);
@@ -22,7 +24,14 @@ export default function Composer({ onSend, busy, onStop, autoFocus = false }) {
         setVoiceNote(`${file.name} is too large. Files need to be under 500 KB.`);
         continue;
       }
-      accepted.push({ name: file.name, content: await file.text() });
+      const content = await file.text();
+      const contentBytes = new TextEncoder().encode(content).byteLength;
+      if (totalBytes + contentBytes > 1_500_000) {
+        setVoiceNote("Attachments are limited to 1.5 MB per message. Remove a file before adding another.");
+        continue;
+      }
+      totalBytes += contentBytes;
+      accepted.push({ name: file.name, content, size: contentBytes });
     }
     if (accepted.length) {
       setFiles((current) => [...current, ...accepted]);
@@ -34,9 +43,10 @@ export default function Composer({ onSend, busy, onStop, autoFocus = false }) {
 
   function submit() {
     if (!canSend) return;
-    onSend({ text: value.trim(), attachments: files });
+    onSend({ text: value.trim(), attachments: files, thinking });
     setValue("");
     setFiles([]);
+    setThinking(false);
     setVoiceNote("");
     if (inputRef.current) inputRef.current.style.height = "auto";
   }
@@ -100,7 +110,7 @@ export default function Composer({ onSend, busy, onStop, autoFocus = false }) {
           <div className="composer-tools">
             <button className="composer-tool add-tool" onClick={() => fileRef.current?.click()} aria-label="Attach a text file" title="Attach a text file"><Plus size={17} /><Paperclip className="paperclip-overlay" size={11} /></button>
             <span className="composer-divider" />
-            <button className="composer-tool web-tool" onClick={() => setVoiceNote("Web search is ready to connect when you add tools to your Astra server.")}><Sparkles size={14} />Think</button>
+            <button className={`composer-tool web-tool ${thinking ? "tool-enabled" : ""}`} onClick={() => setThinking((enabled) => !enabled)} aria-pressed={thinking} title="Ask Astra for a more considered response"><Sparkles size={14} />Think deeper</button>
           </div>
           <div className="composer-actions">
             <button className={`composer-tool mic-tool ${recording ? "recording" : ""}`} onClick={toggleRecording} aria-label={recording ? "Stop voice input" : "Start voice input"} title="Voice input"><Mic size={17} /></button>

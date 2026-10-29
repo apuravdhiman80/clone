@@ -39,10 +39,10 @@
 - `GET /api/health` returns `{ configured: boolean, model: string }`.
 - `POST /api/chat` accepts `{ model, messages }` and streams SSE `delta`, `error`, and `done` events.
 
-- [ ] Scaffold scripts and dependencies for Vite, React, Express, OpenAI, and Lucide.
-- [ ] Implement health and validated streaming routes using `OPENAI_API_KEY` server-side.
-- [ ] Add the React entry and baseline dark theme.
-- [ ] Add preview behavior for missing credentials and document startup/environment setup.
+- [x] Scaffold scripts and dependencies for Vite, React, Express, OpenAI, and Lucide.
+- [x] Implement health and validated streaming routes using `OPENAI_API_KEY` server-side.
+- [x] Add the React entry and baseline dark theme.
+- [x] Add preview behavior for missing credentials and document startup/environment setup.
 
 ### Task 2: Conversation workspace
 
@@ -55,10 +55,10 @@
 - Conversation model: `{ id, title, updatedAt, messages: [{ id, role, content, attachments? }] }`.
 - Persist conversations and preferences under versioned local-storage keys.
 
-- [ ] Build empty state, prompt suggestions, model picker, and streamed message view.
-- [ ] Add create/select/search/rename/delete flows and persist them locally.
-- [ ] Add message composer, stop generation, markdown rendering, and text-file context.
-- [ ] Add responsive sidebar, mobile navigation, and settings dialog.
+- [x] Build empty state, prompt suggestions, model picker, and streamed message view.
+- [x] Add create/select/search/rename/delete flows and persist them locally.
+- [x] Add message composer, stop generation, markdown rendering, and text-file context.
+- [x] Add responsive sidebar, mobile navigation, and settings dialog.
 
 ### Task 3: Voice, polish, and user guidance
 
@@ -66,7 +66,7 @@
 - Modify: `src/App.jsx`, `src/components/Composer.jsx`, `src/components/ChatView.jsx`, `src/styles.css`
 - Create: `README.md`
 
-- [ ] Add speech recognition input and assistant text-to-speech controls with graceful fallbacks.
-- [ ] Finish interaction details, focus states, reduced motion, empty/loading/error states, and responsive layout.
-- [ ] Document local setup, OpenAI key configuration, data behavior, and feature limits.
-- [ ] Run a production build and inspect the rendered app before reporting completion.
+- [x] Add speech recognition input and assistant text-to-speech controls with graceful fallbacks.
+- [x] Finish interaction details, focus states, reduced motion, empty/loading/error states, and responsive layout.
+- [x] Document local setup, OpenAI key configuration, data behavior, and feature limits.
+- [x] Run the production build and confirm the local app is served.

@@ -36,8 +36,10 @@ export default function App() {
   const [conversations, setConversations] = useState(() => readStorage(CHAT_KEY, []));
   const [activeId, setActiveId] = useState(() => readStorage(CHAT_KEY, [])[0]?.id || null);
   const [configured, setConfigured] = useState(false);
+  const [apiVerified, setApiVerified] = useState(false);
+  const [connectionError, setConnectionError] = useState("");
   const [apiModel, setApiModel] = useState("gpt-6.1-terra");
-  const [modelId, setModelId] = useState(() => readStorage(MODEL_KEY, "gpt-6.1-terra"));
+  const [modelId, setModelId] = useState(() => readStorage(MODEL_KEY, ""));
   const [theme, setTheme] = useState(() => readStorage(THEME_KEY, "dark"));
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -49,17 +51,21 @@ export default function App() {
   const responseTextRef = useRef("");
 
   const activeConversation = useMemo(() => conversations.find((item) => item.id === activeId) || null, [conversations, activeId]);
-  const selectedModel = models.find((item) => item.id === modelId) || models[0];
+  const activeModelId = modelId || apiModel;
+  const modelChoices = models.some((item) => item.id === apiModel)
+    ? models
+    : [{ id: apiModel, name: `Server default · ${apiModel}`, detail: "Set by OPENAI_MODEL" }, ...models];
+  const selectedModel = modelChoices.find((item) => item.id === activeModelId) || modelChoices[0];
 
   useEffect(() => {
     try { localStorage.setItem(CHAT_KEY, JSON.stringify(conversations)); } catch { /* Storage may be full or disabled. */ }
   }, [conversations]);
-  useEffect(() => { localStorage.setItem(MODEL_KEY, JSON.stringify(modelId)); }, [modelId]);
-  useEffect(() => { localStorage.setItem(THEME_KEY, JSON.stringify(theme)); document.documentElement.dataset.theme = theme; }, [theme]);
+  useEffect(() => { try { if (modelId) localStorage.setItem(MODEL_KEY, JSON.stringify(modelId)); } catch { /* Keep the current choice for this session. */ } }, [modelId]);
+  useEffect(() => { try { localStorage.setItem(THEME_KEY, JSON.stringify(theme)); } catch { /* Keep the current choice for this session. */ } document.documentElement.dataset.theme = theme; }, [theme]);
   useEffect(() => {
     let ignore = false;
     fetch("/api/health").then((response) => response.json()).then((status) => {
-      if (!ignore) { setConfigured(Boolean(status.configured)); setApiModel(status.model || "gpt-6.1-terra"); }
+      if (!ignore) { setConfigured(Boolean(status.configured)); setApiModel(status.model || "gpt-6.1-terra"); setModelId((current) => current || status.model || "gpt-6.1-terra"); }
     }).catch(() => { if (!ignore) setConfigured(false); });
     return () => { ignore = true; };
   }, []);
@@ -78,17 +84,30 @@ export default function App() {
     setConversations((current) => current.map((conversation) => conversation.id === id ? updater(conversation) : conversation));
   }, []);
 
-  function startNew() {
+  function cancelCurrentResponse() {
+    const current = currentResponseRef.current;
     abortRef.current?.abort();
+    abortRef.current = null;
+    currentResponseRef.current = null;
+    if (current && !responseTextRef.current) {
+      updateConversation(current.conversationId, (conversation) => ({
+        ...conversation,
+        messages: conversation.messages.filter((message) => message.id !== current.responseId),
+      }));
+    }
+    responseTextRef.current = "";
     setBusy(false);
+  }
+
+  function startNew() {
+    cancelCurrentResponse();
     setActiveId(null);
     setSidebarOpen(false);
     setModelOpen(false);
   }
 
   function selectConversation(id) {
-    if (busy) abortRef.current?.abort();
-    setBusy(false);
+    if (busy) cancelCurrentResponse();
     setActiveId(id);
   }
 
@@ -100,11 +119,12 @@ export default function App() {
   }
 
   function deleteConversation(id) {
+    if (activeId === id) cancelCurrentResponse();
     setConversations((current) => current.filter((item) => item.id !== id));
-    if (activeId === id) { setActiveId(null); setBusy(false); abortRef.current?.abort(); }
+    if (activeId === id) setActiveId(null);
   }
 
-  async function sendMessage({ text, attachments = [] }) {
+  async function sendMessage({ text, attachments = [], thinking = false }) {
     if (busy || (!text.trim() && !attachments.length)) return;
     const userContent = text.trim() || `Please review ${attachments.map((file) => file.name).join(", ")}.`;
     const contextualContent = attachments.length
@@ -149,15 +169,21 @@ export default function App() {
           await new Promise((resolve) => setTimeout(resolve, 14));
         }
       } else {
+        const apiMessages = history.slice(-60).map((message, index, items) => ({
+          role: message.role,
+          content: index === items.length - 1 ? contextualContent : message.content,
+        }));
         const response = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ model: modelId || apiModel, messages: [...history.slice(0, -1).map(({ role, content }) => ({ role, content })), { role: "user", content: contextualContent }] }),
+          body: JSON.stringify({ model: activeModelId, thinking, messages: apiMessages }),
           signal: controller.signal,
         });
         if (!response.ok) {
           const payload = await response.json().catch(() => ({}));
-          throw new Error(payload.error || `The assistant returned an error (${response.status}).`);
+          const requestError = new Error(payload.error || `The assistant returned an error (${response.status}).`);
+          requestError.code = response.status === 401 ? "invalid_api_key" : `http_${response.status}`;
+          throw requestError;
         }
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
@@ -173,25 +199,31 @@ export default function App() {
             if (!line) continue;
             const event = JSON.parse(line.slice(6));
             if (event.event === "delta" && event.text) appendDelta(event.text);
-            if (event.event === "error") throw new Error(event.message || "Astra could not finish the response.");
+            if (event.event === "error") {
+              const streamError = new Error(event.message || "Astra could not finish the response.");
+              streamError.code = event.code || "api_error";
+              throw streamError;
+            }
           }
         }
+        if (!controller.signal.aborted) { setApiVerified(true); setConnectionError(""); }
       }
     } catch (error) {
       if (error.name !== "AbortError") {
+        setConnectionError(error.code || "api_error");
         const current = responseTextRef.current;
         setResponseText(current ? `${current}\n\n> ${error.message}` : `I couldn't finish that response. ${error.message}`);
       }
     } finally {
-      if (currentResponseRef.current?.responseId === responseId) currentResponseRef.current = null;
+      const stillCurrent = currentResponseRef.current?.responseId === responseId;
+      if (stillCurrent) currentResponseRef.current = null;
       if (abortRef.current === controller) abortRef.current = null;
-      setBusy(false);
+      if (stillCurrent) setBusy(false);
     }
   }
 
   function stopResponse() {
-    abortRef.current?.abort();
-    setBusy(false);
+    cancelCurrentResponse();
   }
 
   async function copySetup() {
@@ -201,6 +233,16 @@ export default function App() {
       setTimeout(() => setSettingsCopied(false), 1800);
     } catch { setSettingsCopied(false); }
   }
+
+  const connectionClass = !configured ? "preview" : connectionError ? "error" : apiVerified ? "connected" : "configured";
+  const connectionLabel = !configured ? "Preview mode" : connectionError ? "Connection issue" : apiVerified ? "Connected" : "Key configured";
+  const connectionDetail = !configured
+    ? "Connect your OpenAI API key for live answers."
+    : connectionError
+      ? "The last request could not reach a working model. Check the response message and server key."
+      : apiVerified
+        ? "Astra has successfully received a live response from your OpenAI account."
+        : "An API key is configured. Astra will verify it with the first live request.";
 
   return <div className="app-shell">
     <Sidebar conversations={conversations} activeId={activeId} onNew={startNew} onSelect={selectConversation} onRename={renameConversation} onDelete={deleteConversation} onSettings={() => setSettingsOpen(true)} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
@@ -216,16 +258,16 @@ export default function App() {
               <button className="menu-dismiss" aria-label="Close model menu" onClick={() => setModelOpen(false)} />
               <div className="model-menu">
                 <div className="model-menu-heading">CHOOSE YOUR ASTRA</div>
-                {models.map((model) => <button key={model.id} className="model-option" onClick={() => { setModelId(model.id); setModelOpen(false); }}>
-                  <span className="model-option-mark"><Sparkles size={14} /></span><span className="model-option-copy"><strong>{model.name}</strong><small>{model.detail}</small></span>{modelId === model.id && <Check size={15} className="model-check" />}
+                {modelChoices.map((model) => <button key={model.id} className="model-option" onClick={() => { setModelId(model.id); setModelOpen(false); }}>
+                  <span className="model-option-mark"><Sparkles size={14} /></span><span className="model-option-copy"><strong>{model.name}</strong><small>{model.detail}</small></span>{activeModelId === model.id && <Check size={15} className="model-check" />}
                 </button>)}
-                <div className="model-menu-foot">{configured ? "Available through your OpenAI account" : "Connect an API key to use live models"}</div>
+                <div className="model-menu-foot">{!configured ? "Connect an API key to use live models" : connectionError ? "Check the latest response for connection details" : apiVerified ? "Connected through your OpenAI account" : "API key set; verified on the first response"}</div>
               </div>
             </>}
           </div>
         </div>
         <div className="topbar-right">
-          <span className={`connection-status ${configured ? "connected" : "preview"}`}><i />{configured ? "Connected" : "Preview mode"}</span>
+          <span className={`connection-status ${connectionClass}`} title={connectionDetail}><i />{connectionLabel}</span>
           <span className="topbar-separator" />
           <button className="icon-button settings-trigger" onClick={() => setSettingsOpen(true)} aria-label="Open settings"><Settings2 size={17} /></button>
           <span className="top-avatar">A</span>
@@ -249,7 +291,7 @@ export default function App() {
           <button className={theme === "dark" ? "chosen" : ""} onClick={() => setTheme("dark")}><Moon size={15} />Dark</button>
           <button className={theme === "light" ? "chosen" : ""} onClick={() => setTheme("light")}><Sun size={15} />Light</button>
         </div></div>
-        <div className="settings-section connection-section"><div className="settings-row-title"><div><h3>AI connection</h3><p>{configured ? "Astra is ready to answer with your OpenAI account." : "Connect your OpenAI account for live answers."}</p></div><span className={`connection-pill ${configured ? "on" : "off"}`}><i />{configured ? "Live" : "Preview"}</span></div>
+        <div className="settings-section connection-section"><div className="settings-row-title"><div><h3>AI connection</h3><p>{connectionDetail}</p></div><span className={`connection-pill ${connectionClass}`}><i />{!configured ? "Preview" : connectionError ? "Issue" : apiVerified ? "Live" : "Key set"}</span></div>
           {!configured && <><div className="setup-steps"><span>1</span><p>Add your OpenAI API key to a <code>.env</code> file in the project folder.</p></div><div className="setup-steps"><span>2</span><p>Restart Astra. Your key stays on the server and is never saved in this browser.</p></div><button className="copy-setup" onClick={copySetup}>{settingsCopied ? <Check size={14} /> : <span className="copy-brackets">{`{ }`}</span>}{settingsCopied ? "Copied setup snippet" : "Copy setup snippet"}</button></>}
         </div>
         <div className="settings-footer"><span className="settings-orb"><Sparkles size={13} /></span><span>Astra <small>Made for your next good idea.</small></span><span className="settings-version">v1.0</span></div>

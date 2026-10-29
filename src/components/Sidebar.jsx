@@ -37,19 +37,19 @@ export default function Sidebar({ conversations, activeId, onNew, onSelect, onRe
         <div className="sidebar-topline">
           <button className="brand-lockup" onClick={onNew} aria-label="Astra home and new chat">
             <span className="brand-mark"><Sparkles size={17} strokeWidth={2.2} /></span>
-            <span className="brand-name">astra<span className="brand-period">.</span></span>
+          <span className="brand-name">astra<span className="brand-period">.</span></span>
           </button>
           <button className="icon-button quiet sidebar-dismiss" onClick={onClose} aria-label="Close sidebar"><X size={18} /></button>
         </div>
 
         <button className="new-chat-button" onClick={() => { onNew(); onClose(); }}>
-          <Plus size={17} strokeWidth={2.2} /><span>New conversation</span><kbd>⌘ K</kbd>
+          <Plus size={17} strokeWidth={2.2} /><span>New conversation</span><kbd>Ctrl K</kbd>
         </button>
 
         <label className="search-box">
           <Search size={16} />
           <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search conversations" aria-label="Search conversations" />
-          {query ? <button onClick={() => setQuery("")} aria-label="Clear search"><X size={14} /></button> : <kbd>⌘ F</kbd>}
+          {query ? <button onClick={() => setQuery("")} aria-label="Clear search"><X size={14} /></button> : <kbd>Ctrl F</kbd>}
         </label>
 
         <div className="sidebar-section-heading"><span>YOUR SPACE</span><ChevronDown size={13} /></div>
