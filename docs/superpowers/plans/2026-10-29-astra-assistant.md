@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build a polished, responsive Astra assistant app with locally saved conversations, voice features, and a secure OpenAI-backed streaming API.
+**Goal:** Build a polished, responsive Astra assistant app with locally saved conversations, voice features, and free local streaming responses through Ollama.
 
-**Architecture:** A React/Vite single-page client owns the workspace UI and local conversation state. An Express server exposes health and streaming chat endpoints and reads the OpenAI API key only from the server environment; the client provides an explicit preview mode when the endpoint reports no key.
+**Architecture:** A React/Vite single-page client owns the workspace UI and local conversation state. An Express server checks local Ollama, streams stateless Responses API output, and can optionally use OpenAI with a server-side key. The client shows exact local setup steps while Ollama or a model is missing.
 
 **Tech Stack:** React, Vite, JavaScript, Express, OpenAI JavaScript SDK, Lucide React.
 
@@ -12,11 +12,12 @@
 
 ## Global Constraints
 
-- Keep `OPENAI_API_KEY` server-side.
+- Default to local Ollama; no provider key is needed for local inference.
+- Keep optional `OPENAI_API_KEY` server-side.
 - Persist conversations in browser local storage.
-- Default model is `gpt-6.1-terra`; allow `OPENAI_MODEL` override.
-- Preview mode must be disclosed in the interface.
-- Use the OpenAI Responses API for the live integration.
+- Default local model is `qwen3.5:4b`; allow `OLLAMA_MODEL` override and discover installed models.
+- Setup mode must explain that local inference needs Ollama plus a downloaded model.
+- Use the stateless Responses API for streaming, supported by Ollama and OpenAI.
 
 ## Review Focus
 
@@ -36,13 +37,13 @@
 - Create: `src/main.jsx`, `src/App.jsx`, `src/styles.css`
 
 **Interfaces:**
-- `GET /api/health` returns `{ configured: boolean, model: string }`.
+- `GET /api/health` returns `{ configured, provider, serviceAvailable, models, model }`.
 - `POST /api/chat` accepts `{ model, messages }` and streams SSE `delta`, `error`, and `done` events.
 
 - [x] Scaffold scripts and dependencies for Vite, React, Express, OpenAI, and Lucide.
-- [x] Implement health and validated streaming routes using `OPENAI_API_KEY` server-side.
+- [x] Implement health and validated streaming routes for local Ollama and optional OpenAI.
 - [x] Add the React entry and baseline dark theme.
-- [x] Add preview behavior for missing credentials and document startup/environment setup.
+- [x] Add local Ollama setup guidance when the runtime/model is missing and document startup.
 
 ### Task 2: Conversation workspace
 
@@ -55,7 +56,7 @@
 - Conversation model: `{ id, title, updatedAt, messages: [{ id, role, content, attachments? }] }`.
 - Persist conversations and preferences under versioned local-storage keys.
 
-- [x] Build empty state, prompt suggestions, model picker, and streamed message view.
+- [x] Build empty state, prompt suggestions, provider-aware model picker, and streamed message view.
 - [x] Add create/select/search/rename/delete flows and persist them locally.
 - [x] Add message composer, stop generation, markdown rendering, and text-file context.
 - [x] Add responsive sidebar, mobile navigation, and settings dialog.

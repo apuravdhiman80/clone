@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, Code2, Copy, GraduationCap, Lightbulb, PenLine, Volume2 } from "lucide-react";
+import { BookmarkPlus, Check, Code2, Copy, GraduationCap, Lightbulb, PenLine, Volume2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -21,7 +21,9 @@ function Greeting() {
   </>;
 }
 
-function Message({ message }) {
+const speechLocale = { English: "en-IN", Hindi: "hi-IN", Bengali: "bn-IN", Gujarati: "gu-IN", Kannada: "kn-IN", Malayalam: "ml-IN", Marathi: "mr-IN", Odia: "or-IN", Punjabi: "pa-IN", Tamil: "ta-IN", Telugu: "te-IN", Urdu: "ur-IN" };
+
+function Message({ message, onRemember, language }) {
   const [copied, setCopied] = useState(false);
   async function copy() {
     try { await navigator.clipboard.writeText(message.content); setCopied(true); setTimeout(() => setCopied(false), 1600); } catch { /* Clipboard may be unavailable in insecure contexts. */ }
@@ -31,6 +33,7 @@ function Message({ message }) {
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(message.content);
     utterance.rate = 1;
+    utterance.lang = speechLocale[language] || navigator.language || "en-IN";
     window.speechSynthesis.speak(utterance);
   }
 
@@ -38,6 +41,7 @@ function Message({ message }) {
     <div className="user-message-content">
       {message.attachments?.length > 0 && <div className="message-attachments">{message.attachments.map((file, index) => <span className="message-attachment" key={`${file.name}-${index}`}>↗ {file.name}</span>)}</div>}
       {message.content && <p>{message.content}</p>}
+      {message.content && onRemember && <button className="remember-message" onClick={() => onRemember(message.content)}><BookmarkPlus size={12} />Remember</button>}
     </div>
   </article>;
 
@@ -53,7 +57,7 @@ function Message({ message }) {
   </article>;
 }
 
-export default function ChatView({ conversation, busy, onPrompt }) {
+export default function ChatView({ conversation, busy, onPrompt, onRemember, language }) {
   const scrollRef = useRef(null);
   const isEmpty = !conversation?.messages?.length;
   useEffect(() => {
@@ -70,7 +74,7 @@ export default function ChatView({ conversation, busy, onPrompt }) {
         </button>)}
       </div>
     </div> : <div className="message-list">
-      {conversation.messages.map((message) => <Message key={message.id} message={message} />)}
+      {conversation.messages.map((message) => <Message key={message.id} message={message} onRemember={onRemember} language={language} />)}
       {busy && conversation.messages.at(-1)?.role !== "assistant" && <article className="message message-assistant"><div className="assistant-avatar"><span className="mini-orb"><i /><i /><i /><i /></span></div><div className="typing-indicator"><i /><i /><i /></div></article>}
     </div>}
   </div>;

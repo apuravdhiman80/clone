@@ -1,7 +1,9 @@
 import { useRef, useState } from "react";
 import { ArrowUp, FileText, Mic, Paperclip, Plus, Sparkles, X } from "lucide-react";
 
-export default function Composer({ onSend, busy, onStop, autoFocus = false }) {
+const speechLanguage = { English: "en-IN", Hindi: "hi-IN", Bengali: "bn-IN", Gujarati: "gu-IN", Kannada: "kn-IN", Malayalam: "ml-IN", Marathi: "mr-IN", Odia: "or-IN", Punjabi: "pa-IN", Tamil: "ta-IN", Telugu: "te-IN", Urdu: "ur-IN" };
+
+export default function Composer({ onSend, busy, onStop, autoFocus = false, language = "Auto" }) {
   const [value, setValue] = useState("");
   const [files, setFiles] = useState([]);
   const [recording, setRecording] = useState(false);
@@ -70,7 +72,7 @@ export default function Composer({ onSend, busy, onStop, autoFocus = false }) {
     }
     const recognition = new SpeechRecognition();
     const prefix = value.trim();
-    recognition.lang = navigator.language || "en-US";
+    recognition.lang = speechLanguage[language] || navigator.language || "en-US";
     recognition.continuous = false;
     recognition.interimResults = true;
     recognition.onresult = (event) => {
